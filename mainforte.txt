@@ -1,0 +1,99 @@
+mainforte/
+├─ README.md
+├─ docker-compose.yml
+├─ .env.example
+│
+├─ apps/
+│  ├─ api/                      # FastAPI backend
+│  │  ├─ app/
+│  │  │  ├─ main.py
+│  │  │  ├─ config.py
+│  │  │  ├─ db.py
+│  │  │  │
+│  │  │  ├─ models/
+│  │  │  │  ├─ user.py
+│  │  │  │  ├─ worker_profile.py
+│  │  │  │  ├─ client_profile.py
+│  │  │  │  ├─ category.py
+│  │  │  │  ├─ availability.py
+│  │  │  │  ├─ job_post.py
+│  │  │  │  ├─ application.py
+│  │  │  │  └─ match.py
+│  │  │  │
+│  │  │  ├─ schemas/
+│  │  │  │  ├─ auth.py
+│  │  │  │  ├─ worker.py
+│  │  │  │  ├─ availability.py
+│  │  │  │  ├─ job.py
+│  │  │  │  └─ match.py
+│  │  │  │
+│  │  │  ├─ routers/
+│  │  │  │  ├─ health.py
+│  │  │  │  ├─ auth.py
+│  │  │  │  ├─ workers.py
+│  │  │  │  ├─ availabilities.py
+│  │  │  │  ├─ jobs.py
+│  │  │  │  └─ matches.py
+│  │  │  │
+│  │  │  ├─ services/
+│  │  │  │  ├─ auth_service.py
+│  │  │  │  ├─ worker_service.py
+│  │  │  │  ├─ job_service.py
+│  │  │  │  └─ matching_service.py
+│  │  │  │
+│  │  │  ├─ core/
+│  │  │  │  ├─ security.py
+│  │  │  │  └─ utils.py
+│  │  │  │
+│  │  │  └─ migrations/
+│  │  │
+│  │  ├─ tests/
+│  │  ├─ requirements.txt
+│  │  └─ .env.example
+│  │
+│  └─ web/                      # Next.js frontend
+│     ├─ app/
+│     │  ├─ layout.tsx
+│     │  ├─ page.tsx            # landing MainForte
+│     │  ├─ login/
+│     │  ├─ register/
+│     │  │
+│     │  ├─ worker/
+│     │  │  ├─ layout.tsx
+│     │  │  ├─ dashboard/
+│     │  │  ├─ availability/
+│     │  │  └─ jobs/
+│     │  │
+│     │  ├─ client/
+│     │  │  ├─ layout.tsx
+│     │  │  ├─ dashboard/
+│     │  │  ├─ post-job/
+│     │  │  └─ jobs/
+│     │  │
+│     │  └─ jobs/
+│     │     └─ [id]/
+│     │
+│     ├─ components/
+│     │  ├─ Navbar.tsx
+│     │  ├─ WorkerGuard.tsx
+│     │  ├─ ClientGuard.tsx
+│     │  ├─ JobCard.tsx
+│     │  └─ AvailabilityCard.tsx
+│     │
+│     ├─ lib/
+│     │  ├─ api.ts
+│     │  ├─ auth.ts
+│     │  └─ format.ts
+│     │
+│     ├─ public/
+│     ├─ package.json
+│     └─ .env.example
+│
+├─ infra/
+│  ├─ nginx/
+│  └─ scripts/
+│
+└─ docs/
+   ├─ mvp.md
+   ├─ flows.md
+   └─ matching.md
