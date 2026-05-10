@@ -12,6 +12,10 @@ class UserMeSchema(BaseModel):
 
     role: str
 
+    can_work: bool
+
+    can_hire: bool
+
     is_active: bool
 
     # PROFILE

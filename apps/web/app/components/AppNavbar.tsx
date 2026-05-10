@@ -11,6 +11,8 @@ type User = {
   id: number;
   full_name: string;
   role: string;
+  can_work: boolean;
+  can_hire: boolean;
 };
 
 export default function AppNavbar() {
@@ -26,8 +28,8 @@ export default function AppNavbar() {
           await apiFetch("/users/me");
 
         setUser(data);
-      } catch (error) {
-        console.error(error);
+      } catch {
+        setUser(null);
       }
     }
 
@@ -45,18 +47,18 @@ export default function AppNavbar() {
         <div className="flex flex-wrap items-center gap-4 md:gap-6">
           <Link
             href="/"
-              className="text-2xl font-black tracking-tight hover:opacity-80 transition"
+            className="text-2xl font-black tracking-tight hover:opacity-80 transition"
           >
             Main<span className="text-blue-600">Forte</span>
           </Link>
 
-          {user?.role === "worker" && (
+          {user?.can_work && (
             <>
               <Link
                 href="/worker/dashboard"
                 className="hover:text-blue-600"
               >
-                Dashboard
+                Worker Dashboard
               </Link>
 
               <Link
@@ -65,23 +67,16 @@ export default function AppNavbar() {
               >
                 Applications
               </Link>
-
-              <Link
-                href="/messages"
-                className="hover:text-blue-600"
-              >
-                Messages
-              </Link>
             </>
           )}
 
-          {user?.role === "client" && (
+          {user?.can_hire && (
             <>
               <Link
                 href="/client/dashboard"
                 className="hover:text-blue-600"
               >
-                Dashboard
+                Client Dashboard
               </Link>
 
               <Link
@@ -90,20 +85,21 @@ export default function AppNavbar() {
               >
                 Post Job
               </Link>
-
-              <Link
-                href="/messages"
-                className="hover:text-blue-600"
-              >
-                Messages
-              </Link>
             </>
+          )}
+
+          {user && (
+            <Link
+              href="/messages"
+              className="hover:text-blue-600"
+            >
+              Messages
+            </Link>
           )}
         </div>
 
         {!user && (
           <div className="flex items-center gap-3">
-
             <Link
               href="/login"
               className="hover:text-blue-600"
@@ -117,7 +113,6 @@ export default function AppNavbar() {
             >
               Register
             </Link>
-
           </div>
         )}
 

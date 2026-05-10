@@ -75,10 +75,10 @@ def apply_to_job(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    if current_user.role != "worker":
+    if not current_user.can_work:
         raise HTTPException(
             status_code=403,
-            detail="Only workers can apply"
+            detail="Only users who can work can apply"
         )
 
     job = db.query(JobPost).filter(
@@ -310,10 +310,10 @@ def get_my_applications(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    if current_user.role != "worker":
+    if not current_user.can_work:
         raise HTTPException(
             status_code=403,
-            detail="Only workers"
+            detail="Only users who can work"
         )
 
     worker_profile = db.query(WorkerProfile).filter(

@@ -31,10 +31,10 @@ def create_worker_skill(
     current_user: User = Depends(get_current_user)
 ):
 
-    if current_user.role != "worker":
+    if not current_user.can_work:
         raise HTTPException(
             status_code=403,
-            detail="Only workers can add skills"
+            detail="Only users who can work can add skills"
         )
 
     worker_profile = db.query(WorkerProfile).filter(
@@ -90,6 +90,12 @@ def get_my_skills(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+
+    if not current_user.can_work:
+        raise HTTPException(
+            status_code=403,
+            detail="Only users who can work"
+        )
 
     worker_profile = db.query(WorkerProfile).filter(
         WorkerProfile.user_id == current_user.id

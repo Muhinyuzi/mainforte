@@ -78,6 +78,16 @@ def update_me(
             payload.profile_picture_url
         )
 
+    if payload.can_work is not None:
+        current_user.can_work = (
+            payload.can_work
+        )
+
+    if payload.can_hire is not None:
+        current_user.can_hire = (
+            payload.can_hire
+        )
+
     db.add(current_user)
 
     db.commit()

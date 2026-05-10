@@ -28,11 +28,10 @@ def create_job(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-
-    if current_user.role != "client":
+    if not current_user.can_hire:
         raise HTTPException(
             status_code=403,
-            detail="Only clients can create jobs"
+            detail="Only users who can hire can create jobs"
         )
 
     job = JobPost(
@@ -64,7 +63,6 @@ def create_job(
 def list_jobs(
     db: Session = Depends(get_db)
 ):
-
     jobs = db.query(JobPost).all()
 
     return jobs
@@ -78,7 +76,6 @@ def get_job(
     job_id: int,
     db: Session = Depends(get_db)
 ):
-
     job = db.query(JobPost).filter(
         JobPost.id == job_id
     ).first()

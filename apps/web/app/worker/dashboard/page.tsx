@@ -4,16 +4,19 @@ import { useEffect, useState } from "react";
 
 import Link from "next/link";
 
+import { useRouter } from "next/navigation";
+
 import { apiFetch } from "@/lib/api";
 
 import AppNavbar from "@/app/components/AppNavbar";
-//import AppNavbar from "../../components/AppNavbar";
 
 type User = {
   id: number;
   email: string;
   full_name: string;
   role: string;
+  can_work: boolean;
+  can_hire: boolean;
 };
 
 type Availability = {
@@ -72,6 +75,8 @@ export default function WorkerDashboard() {
   const [loading, setLoading] =
     useState(true);
 
+  const router = useRouter();  
+
   function showToast(message: string) {
 
     setToast(message);
@@ -91,6 +96,11 @@ export default function WorkerDashboard() {
           await apiFetch(
             "/users/me"
           );
+
+        if (!me.can_work) {
+          router.push("/client/dashboard");
+          return;
+        }  
 
         const myAvailabilities =
           await apiFetch(

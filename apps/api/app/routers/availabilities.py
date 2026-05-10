@@ -31,11 +31,10 @@ def create_availability(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-
-    if current_user.role != "worker":
+    if not current_user.can_work:
         raise HTTPException(
             status_code=403,
-            detail="Only workers can create availability"
+            detail="Only users who can work can create availability"
         )
 
     worker_profile = db.query(WorkerProfile).filter(
@@ -74,6 +73,11 @@ def get_my_availabilities(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    if not current_user.can_work:
+        raise HTTPException(
+            status_code=403,
+            detail="Only users who can work"
+        )
 
     worker_profile = db.query(WorkerProfile).filter(
         WorkerProfile.user_id == current_user.id
@@ -99,7 +103,6 @@ def get_my_availabilities(
 def get_available_workers(
     db: Session = Depends(get_db)
 ):
-
     now = datetime.utcnow()
 
     availabilities = db.query(Availability).filter(

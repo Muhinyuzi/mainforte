@@ -23,10 +23,10 @@ def get_matching_jobs(
     current_user: User = Depends(get_current_user)
 ):
 
-    if current_user.role != "worker":
+    if not current_user.can_work:
         raise HTTPException(
             status_code=403,
-            detail="Only workers"
+            detail="Only users who can work"
         )
 
     worker_profile = db.query(

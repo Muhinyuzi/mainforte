@@ -28,11 +28,10 @@ def create_worker_profile(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-
-    if current_user.role != "worker":
+    if not current_user.can_work:
         raise HTTPException(
             status_code=403,
-            detail="Only workers can create worker profiles"
+            detail="Only users who can work can create worker profiles"
         )
 
     existing_profile = db.query(WorkerProfile).filter(
@@ -69,6 +68,11 @@ def get_my_worker_profile(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
+    if not current_user.can_work:
+        raise HTTPException(
+            status_code=403,
+            detail="Only users who can work"
+        )
 
     profile = db.query(WorkerProfile).filter(
         WorkerProfile.user_id == current_user.id

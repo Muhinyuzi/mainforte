@@ -40,11 +40,21 @@ def register(
             detail="Email already registered"
         )
 
+    role = (
+        "worker"
+        if payload.can_work
+        else "client"
+    )
+
     user = User(
         email=payload.email,
-        hashed_password=hash_password(payload.password),
+        hashed_password=hash_password(
+            payload.password
+        ),
         full_name=payload.full_name,
-        role=payload.role,
+        role=role,
+        can_work=payload.can_work,
+        can_hire=payload.can_hire,
     )
 
     db.add(user)
