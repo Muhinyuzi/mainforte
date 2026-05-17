@@ -30,6 +30,8 @@ class AvailabilitySchema(BaseModel):
 
     city: str
 
+    region: str
+
     max_distance_km: Optional[int] = None
 
     status: str

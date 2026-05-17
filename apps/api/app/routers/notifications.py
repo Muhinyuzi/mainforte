@@ -12,6 +12,8 @@ from app.models.application import JobApplication
 from app.models.worker_profile import WorkerProfile
 from app.models.review import Review
 
+from app.constants.regions import TEMISCAMING_REGION
+
 
 router = APIRouter(
     prefix="/notifications",
@@ -50,11 +52,13 @@ def get_my_notifications(
     if current_user.can_hire:
         unread_job_activities_count = db.query(JobPost).filter(
             JobPost.client_id == current_user.id,
+            JobPost.region == TEMISCAMING_REGION,
             JobPost.has_unread_activity == True,
         ).count()
 
         my_open_jobs = db.query(JobPost).filter(
             JobPost.client_id == current_user.id,
+            JobPost.region == TEMISCAMING_REGION,
             JobPost.status == "open",
         ).all()
 
@@ -91,11 +95,13 @@ def get_my_notifications(
             if accepted_job_ids:
                 accepted_jobs_count = db.query(JobPost).filter(
                     JobPost.id.in_(accepted_job_ids),
+                    JobPost.region == TEMISCAMING_REGION,
                     JobPost.status == "matched",
                 ).count()
 
                 completed_jobs_count = db.query(JobPost).filter(
                     JobPost.id.in_(accepted_job_ids),
+                    JobPost.region == TEMISCAMING_REGION,
                     JobPost.status == "completed",
                 ).count()
 

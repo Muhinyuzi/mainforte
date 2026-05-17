@@ -13,6 +13,8 @@ from app.schemas.worker_skill import (
     WorkerSkillSchema
 )
 
+from app.constants.regions import TEMISCAMING_REGION
+
 from app.core.security import get_current_user
 
 router = APIRouter(
@@ -38,7 +40,8 @@ def create_worker_skill(
         )
 
     worker_profile = db.query(WorkerProfile).filter(
-        WorkerProfile.user_id == current_user.id
+        WorkerProfile.user_id == current_user.id,
+        WorkerProfile.region == TEMISCAMING_REGION,
     ).first()
 
     if not worker_profile:
@@ -98,7 +101,8 @@ def get_my_skills(
         )
 
     worker_profile = db.query(WorkerProfile).filter(
-        WorkerProfile.user_id == current_user.id
+        WorkerProfile.user_id == current_user.id,
+        WorkerProfile.region == TEMISCAMING_REGION,
     ).first()
 
     if not worker_profile:

@@ -38,7 +38,7 @@ export default function RegisterPage() {
 
     if (!canWork && !canHire) {
       setError(
-        "Select at least one option"
+        "Sélectionnez au moins une option."
       );
       return;
     }
@@ -66,7 +66,7 @@ export default function RegisterPage() {
       console.error(error);
 
       setError(
-        "Failed to register"
+        "Impossible de créer le compte."
       );
     } finally {
       setLoading(false);
@@ -84,12 +84,16 @@ export default function RegisterPage() {
         >
           <div>
             <h1 className="text-3xl font-bold">
-              Create Account
+              Créer un compte
             </h1>
 
             <p className="text-gray-600 mt-2">
-              Join MainForte today
+              Rejoignez MainForte dès aujourd’hui.
             </p>
+
+            <div className="mt-4 rounded-xl border border-blue-200 bg-blue-50 text-blue-800 px-4 py-3 text-sm">
+              MainForte est actuellement disponible dans la région du Témiscaming.
+            </div>
           </div>
 
           {error && (
@@ -100,7 +104,7 @@ export default function RegisterPage() {
 
           <div>
             <label className="block mb-2 font-medium">
-              Full Name
+              Nom complet
             </label>
 
             <input
@@ -118,7 +122,7 @@ export default function RegisterPage() {
 
           <div>
             <label className="block mb-2 font-medium">
-              Email
+              Courriel
             </label>
 
             <input
@@ -136,7 +140,7 @@ export default function RegisterPage() {
 
           <div>
             <label className="block mb-2 font-medium">
-              Password
+              Mot de passe
             </label>
 
             <input
@@ -154,7 +158,7 @@ export default function RegisterPage() {
 
           <div>
             <label className="block mb-3 font-medium">
-              I want to
+              Je veux
             </label>
 
             <div className="space-y-3">
@@ -170,7 +174,7 @@ export default function RegisterPage() {
                 />
 
                 <span>
-                  Find local work
+                  Trouver du travail local
                 </span>
               </label>
 
@@ -186,7 +190,7 @@ export default function RegisterPage() {
                 />
 
                 <span>
-                  Hire local workers
+                  Publier des besoins et engager
                 </span>
               </label>
             </div>
@@ -198,18 +202,18 @@ export default function RegisterPage() {
             className="w-full bg-black text-white py-3 rounded-xl font-semibold hover:opacity-90 transition"
           >
             {loading
-              ? "Creating account..."
-              : "Create Account"}
+              ? "Création du compte..."
+              : "Créer mon compte"}
           </button>
 
           <p className="text-center text-sm text-gray-600">
-            Already have an account?{" "}
+            Vous avez déjà un compte ?{" "}
 
             <Link
               href="/login"
               className="text-blue-600 hover:underline"
             >
-              Login
+              Connexion
             </Link>
           </p>
         </form>

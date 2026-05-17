@@ -13,12 +13,18 @@ from app.schemas.job import (
     JobSchema,
 )
 
+from app.constants.regions import (
+    TEMISCAMING_REGION,
+    TEMISCAMING_CITIES,
+)
+
 from app.core.security import get_current_user
 
 router = APIRouter(
     prefix="/jobs",
     tags=["Jobs"],
 )
+
 
 
 @router.post(
@@ -36,12 +42,19 @@ def create_job(
             detail="Only users who can hire can create jobs",
         )
 
+    if payload.city not in TEMISCAMING_CITIES:
+        raise HTTPException(
+            status_code=400,
+            detail="MainForte est disponible seulement au Témiscaming pour le moment.",
+        )
+
     job = JobPost(
         client_id=current_user.id,
         category_id=payload.category_id,
         title=payload.title,
         description=payload.description,
         city=payload.city,
+        region=TEMISCAMING_REGION,
         address_optional=payload.address_optional,
         needed_at=payload.needed_at,
         duration_estimate_hours=payload.duration_estimate_hours,
@@ -65,7 +78,9 @@ def create_job(
 def list_jobs(
     db: Session = Depends(get_db),
 ):
-    jobs = db.query(JobPost).all()
+    jobs = db.query(JobPost).filter(
+        JobPost.region == TEMISCAMING_REGION
+    ).all()
 
     return jobs
 
@@ -79,7 +94,8 @@ def mark_job_activity_read(
     current_user: User = Depends(get_current_user),
 ):
     job = db.query(JobPost).filter(
-        JobPost.id == job_id
+        JobPost.id == job_id,
+        JobPost.region == TEMISCAMING_REGION,
     ).first()
 
     if not job:
@@ -116,7 +132,8 @@ def get_job(
     db: Session = Depends(get_db),
 ):
     job = db.query(JobPost).filter(
-        JobPost.id == job_id
+        JobPost.id == job_id,
+        JobPost.region == TEMISCAMING_REGION,
     ).first()
 
     if not job:
@@ -138,7 +155,8 @@ def start_job(
     current_user: User = Depends(get_current_user),
 ):
     job = db.query(JobPost).filter(
-        JobPost.id == job_id
+        JobPost.id == job_id,
+        JobPost.region == TEMISCAMING_REGION,
     ).first()
 
     if not job:
@@ -195,7 +213,8 @@ def complete_job(
     current_user: User = Depends(get_current_user),
 ):
     job = db.query(JobPost).filter(
-        JobPost.id == job_id
+        JobPost.id == job_id,
+        JobPost.region == TEMISCAMING_REGION,
     ).first()
 
     if not job:

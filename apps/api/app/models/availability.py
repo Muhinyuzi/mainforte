@@ -31,6 +31,8 @@ class Availability(Base):
 
     city = Column(String, nullable=False)
 
+    region = Column(String, nullable=False)
+
     max_distance_km = Column(Integer)
 
     status = Column(
@@ -39,6 +41,7 @@ class Availability(Base):
     )
 
     note = Column(String)
+
 
     created_at = Column(
         DateTime(timezone=True),

@@ -1,135 +1,255 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import {
+  useState
+} from "react";
 
-import { saveToken } from "@/lib/auth";
+import Link from "next/link";
+
+import {
+  useRouter
+} from "next/navigation";
+
+import AppNavbar from "@/app/components/AppNavbar";
+
+import {
+  saveToken
+} from "@/lib/auth";
+
+import {
+  apiFetch
+} from "@/lib/api";
 
 export default function LoginPage() {
-  const router = useRouter();
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] =
+  const router =
+    useRouter();
+
+  const [email,
+    setEmail] =
     useState("");
+
+  const [password,
+    setPassword] =
+    useState("");
+
+  const [loading,
+    setLoading] =
+    useState(false);
+
+  const [error,
+    setError] =
+    useState<string | null>(
+      null
+    );
 
   async function handleLogin(
     e: React.FormEvent
   ) {
+
     e.preventDefault();
 
-    const formData =
-      new URLSearchParams();
+    try {
 
-    formData.append(
-      "username",
-      email
-    );
+      setLoading(true);
 
-    formData.append(
-      "password",
-      password
-    );
+      setError(null);
 
-    const response = await fetch(
-      "http://localhost:8000/auth/login",
-      {
-        method: "POST",
-        headers: {
-          "Content-Type":
-            "application/x-www-form-urlencoded",
-        },
-        body: formData,
+      const formData =
+        new URLSearchParams();
+
+      formData.append(
+        "username",
+        email
+      );
+
+      formData.append(
+        "password",
+        password
+      );
+
+      const response =
+        await fetch(
+          "http://localhost:8000/auth/login",
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+                "application/x-www-form-urlencoded",
+            },
+
+            body: formData,
+          }
+        );
+
+      if (!response.ok) {
+
+        setError(
+          "Courriel ou mot de passe invalide."
+        );
+
+        return;
       }
-    );
 
-    if (!response.ok) {
-      alert("Login failed");
-      return;
-    }
+      const data =
+        await response.json();
 
-    const data =
-      await response.json();
-
-    saveToken(data.access_token);
-
-    // get current user
-    const meResponse =
-      await fetch(
-        "http://localhost:8000/users/me",
-        {
-          headers: {
-            Authorization: `Bearer ${data.access_token}`,
-          },
-        }
+      saveToken(
+        data.access_token
       );
 
-    if (!meResponse.ok) {
-      alert(
-        "Unable to load user profile"
-      );
-      return;
-    }
+      const me =
+        await apiFetch(
+          "/users/me"
+        );
 
-    const me =
-      await meResponse.json();
+      if (me.can_work) {
 
-    // redirect by role
-    if (me.role === "worker") {
-      router.push(
-        "/worker/dashboard"
+        router.push(
+          "/worker/dashboard"
+        );
+
+      } else if (
+        me.can_hire
+      ) {
+
+        router.push(
+          "/client/dashboard"
+        );
+
+      } else {
+
+        router.push("/");
+      }
+
+    } catch (error) {
+
+      console.error(error);
+
+      setError(
+        "Impossible de se connecter."
       );
-    } else if (
-      me.role === "client"
-    ) {
-      router.push(
-        "/client/dashboard"
-      );
-    } else {
-      router.push("/");
+
+    } finally {
+
+      setLoading(false);
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <form
-        onSubmit={handleLogin}
-        className="border p-8 rounded-lg w-full max-w-md space-y-4"
-      >
-        <h1 className="text-2xl font-bold">
-          Login
-        </h1>
+    <>
+      <AppNavbar />
 
-        <input
-          type="email"
-          placeholder="Email"
-          className="w-full border p-2 rounded"
-          value={email}
-          onChange={(e) =>
-            setEmail(
-              e.target.value
-            )
-          }
-        />
+      <div className="min-h-[calc(100vh-73px)] flex items-center justify-center bg-gray-50 px-4">
 
-        <input
-          type="password"
-          placeholder="Password"
-          className="w-full border p-2 rounded"
-          value={password}
-          onChange={(e) =>
-            setPassword(
-              e.target.value
-            )
-          }
-        />
-
-        <button
-          type="submit"
-          className="w-full bg-black text-white p-2 rounded"
+        <form
+          onSubmit={handleLogin}
+          className="bg-white border rounded-2xl p-8 w-full max-w-md shadow-sm space-y-5"
         >
-          Login
-        </button>
-      </form>
-    </div>
+
+          <div>
+
+            <h1 className="text-3xl font-bold">
+              Connexion
+            </h1>
+
+            <p className="text-gray-600 mt-2">
+              Connectez-vous à votre compte MainForte.
+            </p>
+
+          </div>
+
+          {error && (
+
+            <div className="bg-red-100 text-red-700 px-4 py-3 rounded-lg">
+              {error}
+            </div>
+
+          )}
+
+          <div>
+
+            <label className="block mb-2 font-medium">
+              Courriel
+            </label>
+
+            <input
+              type="email"
+
+              placeholder="exemple@email.com"
+
+              className="w-full border rounded-xl px-4 py-3"
+
+              value={email}
+
+              onChange={(e) =>
+                setEmail(
+                  e.target.value
+                )
+              }
+
+              required
+            />
+
+          </div>
+
+          <div>
+
+            <label className="block mb-2 font-medium">
+              Mot de passe
+            </label>
+
+            <input
+              type="password"
+
+              placeholder="Votre mot de passe"
+
+              className="w-full border rounded-xl px-4 py-3"
+
+              value={password}
+
+              onChange={(e) =>
+                setPassword(
+                  e.target.value
+                )
+              }
+
+              required
+            />
+
+          </div>
+
+          <button
+            type="submit"
+
+            disabled={loading}
+
+            className="w-full bg-black text-white py-3 rounded-xl font-semibold hover:opacity-90 transition"
+          >
+
+            {loading
+              ? "Connexion..."
+              : "Se connecter"}
+
+          </button>
+
+          <p className="text-center text-sm text-gray-600">
+
+            Vous n’avez pas encore de compte ?{" "}
+
+            <Link
+              href="/register"
+              className="text-blue-600 hover:underline"
+            >
+              Inscription
+            </Link>
+
+          </p>
+
+        </form>
+
+      </div>
+    </>
   );
 }

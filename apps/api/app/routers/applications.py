@@ -83,6 +83,7 @@ def serialize_application(
             "id": job.id,
             "title": job.title,
             "city": job.city,
+            "region": job.region,
             "status": job.status,
             "client_id": job.client_id,
         },
@@ -172,7 +173,10 @@ def apply_to_job(
             payload.proposed_rate,
     )
 
+    job.has_unread_activity = True
+
     db.add(application)
+    db.add(job)
 
     db.commit()
 
@@ -276,6 +280,7 @@ def accept_application(
     application.status = "accepted"
 
     job.status = "matched"
+    job.has_unread_activity = False
 
     existing_conversation = db.query(
         Conversation
@@ -331,6 +336,8 @@ def accept_application(
     if availability:
         availability.status = "booked"
 
+    db.add(job)
+
     db.commit()
 
     db.refresh(application)
@@ -383,6 +390,8 @@ def reject_application(
 
     application.status = "rejected"
 
+    job.has_unread_activity = False
+
     match = db.query(Match).filter(
         Match.job_id == job.id,
 
@@ -392,6 +401,8 @@ def reject_application(
 
     if match:
         match.status = "rejected"
+
+    db.add(job)
 
     db.commit()
 

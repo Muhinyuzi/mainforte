@@ -39,6 +39,8 @@ class JobPost(Base):
 
     city = Column(String, nullable=False)
 
+    region = Column(String, nullable=False)
+
     address_optional = Column(String)
 
     needed_at = Column(DateTime(timezone=True))

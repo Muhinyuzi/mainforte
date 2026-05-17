@@ -17,6 +17,8 @@ from app.schemas.review import (
     ReviewSchema,
 )
 
+from app.constants.regions import TEMISCAMING_REGION
+
 
 router = APIRouter(
     prefix="/reviews",
@@ -34,7 +36,8 @@ def create_review(
     current_user: User = Depends(get_current_user),
 ):
     job = db.query(JobPost).filter(
-        JobPost.id == payload.job_id
+        JobPost.id == payload.job_id,
+        JobPost.region == TEMISCAMING_REGION,
     ).first()
 
     if not job:
@@ -150,6 +153,17 @@ def get_job_reviews(
     job_id: int,
     db: Session = Depends(get_db),
 ):
+    job = db.query(JobPost).filter(
+        JobPost.id == job_id,
+        JobPost.region == TEMISCAMING_REGION,
+    ).first()
+
+    if not job:
+        raise HTTPException(
+            status_code=404,
+            detail="Job not found",
+        )
+
     reviews = db.query(Review).filter(
         Review.job_id == job_id
     ).order_by(

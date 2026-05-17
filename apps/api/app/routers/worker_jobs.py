@@ -10,6 +10,8 @@ from app.models.worker_skill import WorkerSkill
 from app.models.availability import Availability
 from app.models.application import JobApplication
 
+from app.constants.regions import TEMISCAMING_REGION
+
 from app.core.security import get_current_user
 from app.utils.distance import get_city_distance_km
 
@@ -41,6 +43,9 @@ def get_matching_jobs(
             detail="Worker profile not found"
         )
 
+    if worker_profile.region != TEMISCAMING_REGION:
+        return []
+
     skills = db.query(WorkerSkill).filter(
         WorkerSkill.worker_id == worker_profile.id
     ).all()
@@ -52,6 +57,7 @@ def get_matching_jobs(
 
     availability = db.query(Availability).filter(
         Availability.worker_id == worker_profile.id,
+        Availability.region == TEMISCAMING_REGION,
         Availability.status == "available",
     ).first()
 
@@ -65,7 +71,8 @@ def get_matching_jobs(
 
     for application in accepted_applications:
         job = db.query(JobPost).filter(
-            JobPost.id == application.job_id
+            JobPost.id == application.job_id,
+            JobPost.region == TEMISCAMING_REGION,
         ).first()
 
         if not job:
@@ -82,8 +89,12 @@ def get_matching_jobs(
     if not availability:
         return results
 
+    if not category_ids:
+        return results
+
     jobs = db.query(JobPost).filter(
         JobPost.category_id.in_(category_ids),
+        JobPost.region == TEMISCAMING_REGION,
         JobPost.status == "open",
     ).all()
 

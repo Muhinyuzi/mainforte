@@ -1,14 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-
 import { useRouter } from "next/navigation";
 
 import { apiFetch } from "@/lib/api";
-
 import AppNavbar from "@/app/components/AppNavbar";
+import ReviewForm from "@/app/components/ReviewForm";
 
 type User = {
   id: number;
@@ -22,6 +20,7 @@ type User = {
 type Availability = {
   id: number;
   city: string;
+  region?: string;
   availability_type: string;
   status: string;
 };
@@ -29,13 +28,16 @@ type Availability = {
 type MatchJob = {
   job: {
     id: number;
+    client_id: number;
     title: string;
     description?: string;
     city: string;
+    region?: string;
     budget_amount: number;
     status: string;
   };
   match_score: number;
+  distance_km?: number;
 };
 
 type Application = {
@@ -45,210 +47,168 @@ type Application = {
   status: string;
 };
 
+function getJobStatusLabel(status: string) {
+  switch (status) {
+    case "open":
+      return "Ouvert";
+    case "matched":
+      return "Travailleur accepté";
+    case "in_progress":
+      return "En cours";
+    case "completed":
+      return "Terminé";
+    case "cancelled":
+      return "Annulé";
+    default:
+      return status;
+  }
+}
+
 export default function WorkerDashboard() {
+  const router = useRouter();
 
-  const [user, setUser] =
-    useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [availabilities, setAvailabilities] = useState<Availability[]>([]);
+  const [jobs, setJobs] = useState<MatchJob[]>([]);
+  const [appliedJobs, setAppliedJobs] = useState<number[]>([]);
+  const [acceptedJobIds, setAcceptedJobIds] = useState<number[]>([]);
+  const [newJobIds, setNewJobIds] = useState<number[]>([]);
+  const [toast, setToast] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const [availabilities,
-    setAvailabilities] =
-    useState<Availability[]>([]);
+  const knownJobIdsRef = useRef<number[]>([]);
+  const notifiedAcceptedIdsRef = useRef<number[]>([]);
 
-  const [jobs, setJobs] =
-    useState<MatchJob[]>([]);
-
-  const [appliedJobs,
-    setAppliedJobs] =
-    useState<number[]>([]);
-
-  const [newJobIds,
-    setNewJobIds] =
-    useState<number[]>([]);
-
-  const [toast, setToast] =
-    useState<string | null>(null);
-
-  const [acceptedJobIds,
-    setAcceptedJobIds] =
-    useState<number[]>([]);
-
-  const [loading, setLoading] =
-    useState(true);
-
-  const router = useRouter();  
-
-  function showToast(message: string) {
-
+  const showToast = useCallback((message: string) => {
     setToast(message);
 
     setTimeout(() => {
       setToast(null);
     }, 3000);
-  }
-
-  useEffect(() => {
-
-    async function loadData() {
-
-      try {
-
-        const me =
-          await apiFetch(
-            "/users/me"
-          );
-
-        if (!me.can_work) {
-          router.push("/client/dashboard");
-          return;
-        }  
-
-        const myAvailabilities =
-          await apiFetch(
-            "/availabilities/me"
-          );
-
-        const jobsData =
-          await apiFetch(
-            "/workers/jobs/matches"
-          );
-
-        const myApplications =
-          await apiFetch(
-            "/applications/me"
-          );
-
-        setUser(me);
-
-        setAvailabilities(
-          myAvailabilities
-        );
-
-        setJobs((prevJobs) => {
-
-          const previousIds =
-            prevJobs.map(
-              (item) =>
-                item.job.id
-            );
-
-          const incomingIds =
-            jobsData.map(
-              (item: MatchJob) =>
-                item.job.id
-            );
-
-          const newIds =
-            incomingIds.filter(
-              (id: number) =>
-                !previousIds.includes(id)
-            );
-
-          if (
-            previousIds.length > 0
-          ) {
-            setNewJobIds(newIds);
-          }
-
-          return jobsData;
-        });
-
-        setAppliedJobs(
-          myApplications.map(
-            (
-              application: Application
-            ) =>
-              application.job_id
-          )
-        );
-
-        const acceptedIds =
-          myApplications
-            .filter(
-              (
-                application: Application
-              ) =>
-                application.status ===
-                "accepted"
-            )
-            .map(
-              (
-                application: Application
-              ) =>
-                application.job_id
-            );
-
-        setAcceptedJobIds(
-          acceptedIds
-        );
-
-        if (
-          acceptedIds.length > 0
-        ) {
-          showToast(
-            "🎉 You got the job!"
-          );
-        }
-
-      } catch (error) {
-
-        console.error(error);
-
-      } finally {
-
-        setLoading(false);
-      }
-    }
-
-    loadData();
-
-    const interval =
-      setInterval(() => {
-        loadData();
-      }, 10000);
-
-    return () =>
-      clearInterval(interval);
-
   }, []);
 
-  async function handleApply(
-    jobId: number
-  ) {
-
+  const loadData = useCallback(async () => {
     try {
+      const me: User = await apiFetch("/users/me");
 
-      await apiFetch(
-        `/applications/jobs/${jobId}`,
-        {
-          method: "POST",
+      if (!me.can_work) {
+        router.push("/client/dashboard");
+        return;
+      }
 
-          body: JSON.stringify({
-            message:
-              "Disponible immédiatement.",
+      const myAvailabilities: Availability[] =
+        await apiFetch("/availabilities/me");
 
-            proposed_rate: 28,
-          }),
+      const jobsData: MatchJob[] =
+        await apiFetch("/workers/jobs/matches");
+
+      const myApplications: Application[] =
+        await apiFetch("/applications/me");
+
+      const incomingJobIds = jobsData.map((item) => item.job.id);
+
+      if (knownJobIdsRef.current.length > 0) {
+        const newIds = incomingJobIds.filter(
+          (id) => !knownJobIdsRef.current.includes(id)
+        );
+
+        setNewJobIds(newIds);
+
+        if (newIds.length > 0) {
+          showToast("Nouveau travail compatible disponible !");
         }
+      }
+
+      knownJobIdsRef.current = incomingJobIds;
+
+      const appliedIds = myApplications.map(
+        (application) => application.job_id
       );
 
-      showToast(
-        "Application sent!"
+      const acceptedIds = myApplications
+        .filter((application) => application.status === "accepted")
+        .map((application) => application.job_id);
+
+      const newlyAcceptedIds = acceptedIds.filter(
+        (id) => !notifiedAcceptedIdsRef.current.includes(id)
       );
 
-      setAppliedJobs(
-        (prev) => [
-          ...prev,
-          jobId,
-        ]
-      );
+      if (newlyAcceptedIds.length > 0) {
+        showToast("🎉 Tu as obtenu le travail !");
+      }
 
+      notifiedAcceptedIdsRef.current = acceptedIds;
+
+      setUser(me);
+      setAvailabilities(myAvailabilities);
+      setJobs(jobsData);
+      setAppliedJobs(appliedIds);
+      setAcceptedJobIds(acceptedIds);
     } catch (error) {
-
       console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  }, [router, showToast]);
 
-      showToast(
-        "Failed to apply"
+  useEffect(() => {
+    loadData();
+
+    const interval = setInterval(() => {
+      loadData();
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [loadData]);
+
+  async function handleApply(jobId: number) {
+    try {
+      await apiFetch(`/applications/jobs/${jobId}`, {
+        method: "POST",
+        body: JSON.stringify({
+          message: "Disponible immédiatement.",
+          proposed_rate: 28,
+        }),
+      });
+
+      showToast("Candidature envoyée !");
+
+      setAppliedJobs((prev) =>
+        prev.includes(jobId) ? prev : [...prev, jobId]
       );
+
+      loadData();
+    } catch (error) {
+      console.error(error);
+      showToast("Échec de la candidature");
+    }
+  }
+
+  async function handleStartJob(jobId: number) {
+    try {
+      await apiFetch(`/jobs/${jobId}/start`, {
+        method: "PATCH",
+      });
+
+      showToast("Travail commencé !");
+      loadData();
+    } catch (error) {
+      console.error(error);
+      showToast("Impossible de commencer le travail");
+    }
+  }
+
+  async function handleCompleteJob(jobId: number) {
+    try {
+      await apiFetch(`/jobs/${jobId}/complete`, {
+        method: "PATCH",
+      });
+
+      showToast("Travail terminé !");
+      loadData();
+    } catch (error) {
+      console.error(error);
+      showToast("Impossible de terminer le travail");
     }
   }
 
@@ -256,10 +216,7 @@ export default function WorkerDashboard() {
     return (
       <>
         <AppNavbar />
-
-        <div className="p-10">
-          Loading...
-        </div>
+        <div className="p-10">Chargement...</div>
       </>
     );
   }
@@ -275,166 +232,167 @@ export default function WorkerDashboard() {
       )}
 
       <div className="p-10 space-y-10">
-
         <div>
           <h1 className="text-4xl font-bold">
-            Worker Dashboard
+            Tableau de bord travailleur
           </h1>
 
           <p className="mt-2 text-gray-600">
-            Welcome {user?.full_name}
+            Bienvenue {user?.full_name}
           </p>
         </div>
 
         <div>
           <h2 className="text-2xl font-semibold mb-4">
-            My Availabilities
+            Mes disponibilités
           </h2>
 
           <div className="space-y-3">
-
-            {availabilities.map(
-              (availability) => (
-
-                <div
-                  key={availability.id}
-                  className="border rounded-lg p-4"
-                >
-
-                  <p>
-                    City:{" "}
-                    {
-                      availability.city
-                    }
-                  </p>
-
-                  <p>
-                    Type:{" "}
-                    {
-                      availability.availability_type
-                    }
-                  </p>
-
-                  <p>
-                    Status:{" "}
-                    {
-                      availability.status
-                    }
-                  </p>
-
-                </div>
-              )
+            {availabilities.length === 0 && (
+              <p className="text-gray-500">
+                Aucune disponibilité créée pour le moment.
+              </p>
             )}
 
+            {availabilities.map((availability) => (
+              <div
+                key={availability.id}
+                className="border rounded-lg p-4"
+              >
+                <p>Ville : {availability.city}</p>
+                <p>Région : {availability.region || "Témiscaming"}</p>
+                <p>Type : {availability.availability_type}</p>
+                <p>Statut : {availability.status}</p>
+              </div>
+            ))}
           </div>
         </div>
 
         <div>
-
           <h2 className="text-2xl font-semibold mb-4">
-            Matching Jobs
+            Emplois compatibles
           </h2>
 
           <div className="space-y-3">
+            {jobs.length === 0 && (
+              <p className="text-gray-500">
+                Aucun emploi compatible trouvé pour le moment.
+              </p>
+            )}
 
             {jobs.map((item) => {
-
               const job = item.job;
+              const hasApplied = appliedJobs.includes(job.id);
+              const isAccepted = acceptedJobIds.includes(job.id);
 
               return (
-
                 <div
                   key={job.id}
                   className="border rounded-lg p-4"
                 >
+                  <div className="flex items-center gap-3">
+                    <Link
+                      href={`/jobs/${job.id}`}
+                      className="font-bold text-lg text-blue-600 hover:underline"
+                    >
+                      {job.title}
+                    </Link>
 
-                  <Link
-                    href={`/jobs/${job.id}`}
-                    className="font-bold text-lg text-blue-600 hover:underline"
-                  >
-                    {job.title}
-                  </Link>
+                    {newJobIds.includes(job.id) && (
+                      <span className="bg-green-500 text-white text-xs px-2 py-1 rounded">
+                        NOUVEAU
+                      </span>
+                    )}
+                  </div>
 
-                  {newJobIds.includes(
-                    job.id
-                  ) && (
+                  <p>Ville : {job.city}</p>
+                  <p>Région : {job.region || "Témiscaming"}</p>
 
-                    <span className="inline-block ml-3 bg-green-500 text-white text-xs px-2 py-1 rounded">
-                      NEW
-                    </span>
+                  {item.distance_km !== undefined &&
+                    item.distance_km !== null && (
+                      <p className="text-sm text-gray-600">
+                        📍 À environ {item.distance_km.toFixed(1)} km
+                      </p>
+                    )}
 
-                  )}
-
-                  <p>
-                    City: {job.city}
-                  </p>
-
-                  <p>
-                    Budget: $
-                    {
-                      job.budget_amount
-                    }
-                  </p>
+                  <p>Budget : {job.budget_amount} $</p>
 
                   <p>
-                    Status:
-                    {" "}
-                    {job.status}
+                    Statut : {getJobStatusLabel(job.status)}
                   </p>
 
                   <p className="font-bold text-green-600">
-                    Match Score:
-                    {" "}
-                    {item.match_score}
+                    Score de compatibilité : {item.match_score}
                   </p>
 
-                  {job.status ===
-                    "open" &&
-                    !appliedJobs.includes(
-                      job.id
-                    ) && (
-
+                  {job.status === "open" && !hasApplied && (
                     <button
-                      onClick={() =>
-                        handleApply(
-                          job.id
-                        )
-                      }
+                      onClick={() => handleApply(job.id)}
                       className="mt-4 bg-black text-white px-4 py-2 rounded"
                     >
-                      Apply
+                      Postuler
                     </button>
-
                   )}
 
-                  {appliedJobs.includes(
-                    job.id
-                  ) && (
-
+                  {hasApplied && job.status === "open" && (
                     <p className="mt-4 text-green-600 font-semibold">
-                      Application sent
+                      Candidature envoyée
                     </p>
-
                   )}
 
-                  {acceptedJobIds.includes(
-                    job.id
-                  ) && (
+                  {isAccepted && job.status === "matched" && (
+                    <div className="mt-4 space-y-2">
+                      <p className="text-blue-600 font-bold">
+                        🎉 Tu as obtenu le travail
+                      </p>
 
-                    <p className="mt-2 text-blue-600 font-bold">
-                      🎉 You got the job
-                    </p>
-
+                      <button
+                        onClick={() => handleStartJob(job.id)}
+                        className="bg-black text-white px-4 py-2 rounded"
+                      >
+                        Commencer le travail
+                      </button>
+                    </div>
                   )}
 
+                  {isAccepted && job.status === "in_progress" && (
+                    <div className="mt-4 space-y-2">
+                      <p className="text-orange-600 font-bold">
+                        Travail en cours
+                      </p>
+
+                      <button
+                        onClick={() => handleCompleteJob(job.id)}
+                        className="bg-green-600 text-white px-4 py-2 rounded"
+                      >
+                        Terminer le travail
+                      </button>
+                    </div>
+                  )}
+
+                  {isAccepted && job.status === "completed" && (
+                    <div className="mt-4 space-y-4">
+                      <p className="text-green-700 font-bold">
+                        Travail terminé
+                      </p>
+
+                      <div>
+                        <h3 className="text-lg font-bold mb-3">
+                          Laisser un avis au client
+                        </h3>
+
+                        <ReviewForm
+                          jobId={job.id}
+                          targetUserId={job.client_id}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })}
-
           </div>
-
         </div>
-
       </div>
     </>
   );

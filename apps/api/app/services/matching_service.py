@@ -7,6 +7,8 @@ from app.models.worker_skill import WorkerSkill
 from app.models.availability import Availability
 from app.models.match import Match
 
+from app.constants.regions import TEMISCAMING_REGION
+
 from app.utils.distance import get_city_distance_km
 
 
@@ -16,6 +18,9 @@ def get_job_matches(
 ):
     matches = []
 
+    if job.region != TEMISCAMING_REGION:
+        return matches
+
     worker_profiles = (
         db.query(WorkerProfile)
         .join(
@@ -23,7 +28,8 @@ def get_job_matches(
             User.id == WorkerProfile.user_id
         )
         .filter(
-            User.can_work.is_(True)
+            User.can_work.is_(True),
+            WorkerProfile.region == TEMISCAMING_REGION,
         )
         .all()
     )
@@ -39,6 +45,7 @@ def get_job_matches(
 
         availability = db.query(Availability).filter(
             Availability.worker_id == worker.id,
+            Availability.region == TEMISCAMING_REGION,
             Availability.status == "available",
             Availability.start_datetime <= job.needed_at,
             Availability.end_datetime >= job.needed_at,
@@ -79,6 +86,7 @@ def get_job_matches(
             "worker_profile_id": worker.id,
             "user_id": worker.user_id,
             "city": worker.city,
+            "region": worker.region,
             "hourly_rate": worker.hourly_rate,
             "experience_level": skill.experience_level,
             "score": score,
