@@ -2,6 +2,8 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
+from typing import Optional
+
 
 class AvailabilityCreateSchema(BaseModel):
     availability_type: str
@@ -28,7 +30,7 @@ class AvailabilitySchema(BaseModel):
 
     city: str
 
-    max_distance_km: int
+    max_distance_km: Optional[int] = None
 
     status: str
 

@@ -18,6 +18,7 @@ from app.models.match import Match
 from app.models.application import JobApplication
 from app.models.conversation import Conversation
 from app.models.message import Message
+from app.models.review import Review
 
 
 

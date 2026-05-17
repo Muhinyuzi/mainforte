@@ -22,6 +22,12 @@ from app.routers.worker_jobs import (
 from app.routers.conversations import (
     router as conversations_router
 )
+from app.routers.reviews import (
+    router as reviews_router    )  
+
+from app.routers.notifications import (
+    router as notifications_router
+)
 
 Base.metadata.create_all(bind=engine)
 
@@ -51,6 +57,8 @@ app.include_router(matches_router)
 app.include_router(applications_router)
 app.include_router(worker_jobs_router)
 app.include_router(conversations_router)
+app.include_router(reviews_router)
+app.include_router(notifications_router)
 
 @app.get("/")
 def root():

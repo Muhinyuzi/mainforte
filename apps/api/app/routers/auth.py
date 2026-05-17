@@ -3,7 +3,9 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
 from app.db import get_db
+
 from app.models.user import User
+from app.models.worker_profile import WorkerProfile
 
 from app.schemas.auth import (
     RegisterSchema,
@@ -60,6 +62,23 @@ def register(
     db.add(user)
     db.commit()
     db.refresh(user)
+
+    if user.can_work:
+        existing_profile = db.query(
+            WorkerProfile
+        ).filter(
+            WorkerProfile.user_id == user.id
+        ).first()
+
+        if not existing_profile:
+            profile = WorkerProfile(
+                user_id=user.id,
+                city=user.city,
+                hourly_rate=user.hourly_rate,
+            )
+
+            db.add(profile)
+            db.commit()
 
     token = create_access_token({
         "sub": str(user.id),

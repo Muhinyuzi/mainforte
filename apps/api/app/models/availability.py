@@ -7,6 +7,7 @@ from sqlalchemy import (
 )
 
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
 
 from app.db import Base
 
@@ -28,7 +29,7 @@ class Availability(Base):
 
     end_datetime = Column(DateTime(timezone=True))
 
-    city = Column(String)
+    city = Column(String, nullable=False)
 
     max_distance_km = Column(Integer)
 

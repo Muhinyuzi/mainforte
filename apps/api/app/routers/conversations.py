@@ -52,6 +52,16 @@ def get_my_conversations(
             Message.created_at.desc()
         ).first()
 
+        unread_count = db.query(
+            Message
+        ).filter(
+            Message.conversation_id ==
+            conversation.id,
+            Message.sender_id !=
+            current_user.id,
+            Message.is_read == False,
+        ).count()
+
         job = db.query(JobPost).filter(
             JobPost.id ==
             conversation.job_id
@@ -68,6 +78,8 @@ def get_my_conversations(
             "last_message_at":
                 last_message.created_at
                 if last_message else None,
+            "unread_count":
+                unread_count,
         })
 
     return results
@@ -112,6 +124,21 @@ def get_messages(
         Message.created_at.asc()
     ).all()
 
+    db.query(Message).filter(
+        Message.conversation_id ==
+        conversation.id,
+        Message.sender_id !=
+        current_user.id,
+        Message.is_read == False,
+    ).update(
+        {
+            Message.is_read: True
+        },
+        synchronize_session=False
+    )
+
+    db.commit()
+
     return messages
 
 
@@ -148,10 +175,19 @@ def send_message(
             detail="Not allowed"
         )
 
+    content = payload.get("content", "").strip()
+
+    if not content:
+        raise HTTPException(
+            status_code=400,
+            detail="Message cannot be empty"
+        )
+
     message = Message(
         conversation_id=conversation.id,
         sender_id=current_user.id,
-        content=payload.get("content"),
+        content=content,
+        is_read=False,
     )
 
     db.add(message)

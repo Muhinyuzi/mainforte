@@ -3,7 +3,8 @@ from sqlalchemy import (
     Integer,
     String,
     ForeignKey,
-    DateTime
+    DateTime,
+    Float,
 )
 
 from sqlalchemy.sql import func
@@ -29,6 +30,8 @@ class Match(Base):
     )
 
     score = Column(Integer, default=0)
+
+    distance_km = Column(Float, nullable=True)
 
     status = Column(
         String,

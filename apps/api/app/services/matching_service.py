@@ -7,6 +7,8 @@ from app.models.worker_skill import WorkerSkill
 from app.models.availability import Availability
 from app.models.match import Match
 
+from app.utils.distance import get_city_distance_km
+
 
 def get_job_matches(
     db: Session,
@@ -21,7 +23,7 @@ def get_job_matches(
             User.id == WorkerProfile.user_id
         )
         .filter(
-            User.can_work == True
+            User.can_work.is_(True)
         )
         .all()
     )
@@ -38,7 +40,6 @@ def get_job_matches(
         availability = db.query(Availability).filter(
             Availability.worker_id == worker.id,
             Availability.status == "available",
-            Availability.city == job.city,
             Availability.start_datetime <= job.needed_at,
             Availability.end_datetime >= job.needed_at,
         ).first()
@@ -46,12 +47,27 @@ def get_job_matches(
         if not availability:
             continue
 
+        distance_km = get_city_distance_km(
+            availability.city,
+            job.city,
+        )
+
+        if distance_km is None:
+            continue
+
+        if distance_km > 30:
+            continue
+
         score = 0
 
         score += 40
 
-        if availability.city == job.city:
+        if distance_km <= 5:
             score += 30
+        elif distance_km <= 15:
+            score += 20
+        elif distance_km <= 30:
+            score += 10
 
         if worker.is_verified:
             score += 10
@@ -66,6 +82,7 @@ def get_job_matches(
             "hourly_rate": worker.hourly_rate,
             "experience_level": skill.experience_level,
             "score": score,
+            "distance_km": distance_km,
         })
 
     matches.sort(
@@ -100,6 +117,7 @@ def generate_and_store_matches(
             job_id=job.id,
             worker_profile_id=item["worker_profile_id"],
             score=item["score"],
+            distance_km=item["distance_km"],
             status="suggested"
         )
 
