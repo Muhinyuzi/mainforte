@@ -3,11 +3,10 @@
 import {
   useEffect,
   useRef,
-  useState
+  useState,
 } from "react";
 
 import AppNavbar from "@/app/components/AppNavbar";
-
 import { apiFetch } from "@/lib/api";
 
 type User = {
@@ -19,32 +18,31 @@ type Conversation = {
   id: number;
   job_title?: string;
   last_message?: string;
+  last_message_at?: string;
 };
 
 type Message = {
-  id: number;
+  id?: number;
   sender_id: number;
+  sender_name: string;
   content: string;
   created_at: string;
 };
 
 export default function MessagesPage() {
   const messagesEndRef =
-    useRef<HTMLDivElement | null>(
-      null
-    );
+    useRef<HTMLDivElement | null>(null);
 
-  const [currentUser,
-    setCurrentUser] =
+  const [currentUser, setCurrentUser] =
     useState<User | null>(null);
 
-  const [conversations,
-    setConversations] =
+  const [conversations, setConversations] =
     useState<Conversation[]>([]);
 
-  const [selectedConversation,
-    setSelectedConversation] =
-    useState<number | null>(null);
+  const [
+    selectedConversation,
+    setSelectedConversation,
+  ] = useState<number | null>(null);
 
   const [messages, setMessages] =
     useState<Message[]>([]);
@@ -54,10 +52,7 @@ export default function MessagesPage() {
 
   async function loadCurrentUser() {
     try {
-      const data =
-        await apiFetch(
-          "/users/me"
-        );
+      const data = await apiFetch("/users/me");
 
       setCurrentUser(data);
     } catch (error) {
@@ -68,20 +63,17 @@ export default function MessagesPage() {
   async function loadConversations() {
     try {
       const data =
-        await apiFetch(
-          "/conversations/me"
-        );
+        await apiFetch("/conversations/me");
 
       setConversations(data);
 
-      if (
-        data.length > 0 &&
-        !selectedConversation
-      ) {
-        setSelectedConversation(
-          data[0].id
-        );
-      }
+      setSelectedConversation((current) => {
+        if (!current && data.length > 0) {
+          return data[0].id;
+        }
+
+        return current;
+      });
     } catch (error) {
       console.error(error);
     }
@@ -91,10 +83,9 @@ export default function MessagesPage() {
     conversationId: number
   ) {
     try {
-      const data =
-        await apiFetch(
-          `/conversations/${conversationId}/messages`
-        );
+      const data = await apiFetch(
+        `/conversations/${conversationId}/messages`
+      );
 
       setMessages(data);
     } catch (error) {
@@ -104,37 +95,31 @@ export default function MessagesPage() {
 
   useEffect(() => {
     loadCurrentUser();
-
     loadConversations();
+  }, []);
 
-    const interval =
-      setInterval(() => {
-        loadConversations();
+  useEffect(() => {
+    const interval = setInterval(() => {
+      loadConversations();
 
-        if (selectedConversation) {
-          loadMessages(
-            selectedConversation
-          );
-        }
-      }, 3000);
+      if (selectedConversation) {
+        loadMessages(selectedConversation);
+      }
+    }, 3000);
 
-    return () =>
-      clearInterval(interval);
+    return () => clearInterval(interval);
   }, [selectedConversation]);
 
   useEffect(() => {
     if (selectedConversation) {
-      loadMessages(
-        selectedConversation
-      );
+      loadMessages(selectedConversation);
     }
   }, [selectedConversation]);
 
   useEffect(() => {
-    messagesEndRef.current
-      ?.scrollIntoView({
-        behavior: "smooth",
-      });
+    messagesEndRef.current?.scrollIntoView({
+      behavior: "smooth",
+    });
   }, [messages]);
 
   async function handleSend() {
@@ -158,9 +143,8 @@ export default function MessagesPage() {
 
       setContent("");
 
-      loadMessages(
-        selectedConversation
-      );
+      loadMessages(selectedConversation);
+      loadConversations();
     } catch (error) {
       console.error(error);
     }
@@ -171,20 +155,24 @@ export default function MessagesPage() {
       <AppNavbar />
 
       <div className="h-[calc(100vh-73px)] flex flex-col md:flex-row">
-
-        {/* SIDEBAR */}
-
         <div className="w-full md:w-80 border-b md:border-b-0 md:border-r p-4 overflow-y-auto bg-white max-h-64 md:max-h-none">
-
           <h1 className="text-2xl font-bold mb-6">
             Messages
           </h1>
 
           <div className="space-y-3">
+            {conversations.length === 0 && (
+              <div className="border rounded-xl p-4 text-center text-gray-600">
+                Aucune conversation pour le moment.
+              </div>
+            )}
+
             {conversations.map(
-              (conversation) => (
+              (conversation, index) => (
                 <button
-                  key={conversation.id}
+                  key={`conversation-${
+                    conversation.id ?? index
+                  }`}
                   onClick={() =>
                     setSelectedConversation(
                       conversation.id
@@ -198,15 +186,21 @@ export default function MessagesPage() {
                   }`}
                 >
                   <p className="font-bold">
-                    {
-                      conversation.job_title
-                    }
+                    {conversation.job_title ||
+                      "Conversation"}
                   </p>
 
-                  <p className="text-sm text-gray-600 truncate">
-                    {
-                      conversation.last_message
-                    }
+                  <p className="text-sm text-gray-600 truncate mt-1">
+                    {conversation.last_message ||
+                      "Aucun message pour le moment."}
+                  </p>
+
+                  <p className="text-xs text-gray-400 mt-2">
+                    {conversation.last_message_at
+                      ? new Date(
+                          conversation.last_message_at
+                        ).toLocaleString()
+                      : ""}
                   </p>
                 </button>
               )
@@ -214,28 +208,33 @@ export default function MessagesPage() {
           </div>
         </div>
 
-        {/* CHAT */}
-
         <div className="flex-1 flex flex-col bg-gray-50 min-h-0">
-
           {!selectedConversation && (
-            <div className="flex-1 flex items-center justify-center text-gray-500">
-              Select a conversation
+            <div className="flex-1 flex items-center justify-center text-gray-500 text-center px-6">
+              Sélectionnez une conversation pour
+              commencer.
             </div>
           )}
 
           {selectedConversation && (
             <>
               <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
+                {messages.length === 0 && (
+                  <div className="text-center text-gray-500 mt-10">
+                    Aucun message pour le moment.
+                  </div>
+                )}
 
-                {messages.map((message) => {
+                {messages.map((message, index) => {
                   const isMine =
                     message.sender_id ===
                     currentUser?.id;
 
                   return (
                     <div
-                      key={message.id}
+                      key={`message-${
+                        message.id ?? index
+                      }`}
                       className={`flex ${
                         isMine
                           ? "justify-end"
@@ -249,14 +248,21 @@ export default function MessagesPage() {
                             : "bg-white"
                         }`}
                       >
-                        <p>
-                          {message.content}
-                        </p>
+                        {!isMine && (
+                          <p className="text-xs font-semibold mb-1 opacity-70">
+                            {message.sender_name ||
+                              "Utilisateur"}
+                          </p>
+                        )}
+
+                        <p>{message.content}</p>
 
                         <p className="text-xs mt-2 opacity-70">
-                          {new Date(
-                            message.created_at
-                          ).toLocaleTimeString()}
+                          {message.created_at
+                            ? new Date(
+                                message.created_at
+                              ).toLocaleTimeString()
+                            : ""}
                         </p>
                       </div>
                     </div>
@@ -271,24 +277,31 @@ export default function MessagesPage() {
                   type="text"
                   value={content}
                   onChange={(e) =>
-                    setContent(
-                      e.target.value
-                    )
+                    setContent(e.target.value)
                   }
-                  placeholder="Write message..."
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      handleSend();
+                    }
+                  }}
+                  placeholder="Écrire un message..."
                   className="flex-1 border rounded-full px-4 md:px-5 py-3 focus:outline-none"
                 />
 
                 <button
                   onClick={handleSend}
-                  className="bg-black text-white px-4 md:px-6 rounded-full"
+                  disabled={!content.trim()}
+                  className={`px-4 md:px-6 rounded-full text-white transition ${
+                    content.trim()
+                      ? "bg-black"
+                      : "bg-gray-400 cursor-not-allowed"
+                  }`}
                 >
-                  Send
+                  Envoyer
                 </button>
               </div>
             </>
           )}
-
         </div>
       </div>
     </>

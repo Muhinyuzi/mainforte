@@ -11,6 +11,9 @@ from app.services.matching_service import (
     generate_and_store_matches
 )
 
+from app.constants.regions import (
+    TEMISCAMING_REGION,
+)
 
 router = APIRouter(
     prefix="/matches",
@@ -25,7 +28,8 @@ def get_matches_for_job(
 ):
 
     job = db.query(JobPost).filter(
-        JobPost.id == job_id
+        JobPost.id == job_id,
+        JobPost.region == TEMISCAMING_REGION,
     ).first()
 
     if not job:
@@ -46,6 +50,7 @@ def get_matches_for_job(
         "matches": matches,
     }
 
+
 @router.post("/jobs/{job_id}/generate")
 def generate_matches(
     job_id: int,
@@ -53,7 +58,8 @@ def generate_matches(
 ):
 
     job = db.query(JobPost).filter(
-        JobPost.id == job_id
+        JobPost.id == job_id,
+        JobPost.region == TEMISCAMING_REGION,
     ).first()
 
     if not job:
@@ -72,11 +78,23 @@ def generate_matches(
         "generated_matches": len(matches)
     }
 
+
 @router.get("/jobs/{job_id}/stored")
 def get_stored_matches(
     job_id: int,
     db: Session = Depends(get_db)
 ):
+
+    job = db.query(JobPost).filter(
+        JobPost.id == job_id,
+        JobPost.region == TEMISCAMING_REGION,
+    ).first()
+
+    if not job:
+        raise HTTPException(
+            status_code=404,
+            detail="Job not found"
+        )
 
     matches = db.query(Match).filter(
         Match.job_id == job_id

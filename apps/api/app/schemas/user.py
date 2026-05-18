@@ -12,6 +12,10 @@ class UserMeSchema(BaseModel):
 
     role: str
 
+    can_work: bool
+
+    can_hire: bool
+
     is_active: bool
 
     # PROFILE
@@ -25,6 +29,10 @@ class UserMeSchema(BaseModel):
     hourly_rate: float | None = None
 
     profile_picture_url: str | None = None
+
+    can_work: bool | None = None
+
+    can_hire: bool | None = None
 
     class Config:
         from_attributes = True
@@ -41,3 +49,7 @@ class UserProfileUpdate(BaseModel):
     hourly_rate: float | None = None
 
     profile_picture_url: str | None = None
+
+    can_work: bool | None = None
+
+    can_hire: bool | None = None

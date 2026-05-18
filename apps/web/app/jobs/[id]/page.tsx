@@ -1,16 +1,30 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import {
+  use,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
+
+import Link from "next/link";
 
 import AppNavbar from "@/app/components/AppNavbar";
-
 import { apiFetch } from "@/lib/api";
+
+type User = {
+  id: number;
+  can_work: boolean;
+  can_hire: boolean;
+};
 
 type Job = {
   id: number;
+  client_id: number;
   title: string;
   description?: string;
   city: string;
+  region?: string;
   address_optional?: string;
   budget_amount: number;
   duration_estimate_hours?: number;
@@ -18,6 +32,34 @@ type Job = {
   status: string;
   needed_at?: string;
 };
+
+function getStatusLabel(status: string) {
+  switch (status) {
+    case "open":
+      return "Ouvert";
+    case "matched":
+      return "Accepté";
+    case "in_progress":
+      return "En cours";
+    case "completed":
+      return "Terminé";
+    default:
+      return status;
+  }
+}
+
+function getUrgencyLabel(urgency?: string) {
+  switch (urgency) {
+    case "today":
+      return "Aujourd’hui";
+    case "urgent":
+      return "Urgent";
+    case "this_week":
+      return "Cette semaine";
+    default:
+      return urgency || "Non précisée";
+  }
+}
 
 export default function JobDetailPage({
   params,
@@ -27,6 +69,9 @@ export default function JobDetailPage({
   }>;
 }) {
   const resolvedParams = use(params);
+
+  const [user, setUser] =
+    useState<User | null>(null);
 
   const [job, setJob] =
     useState<Job | null>(null);
@@ -40,35 +85,76 @@ export default function JobDetailPage({
   const [toast, setToast] =
     useState<string | null>(null);
 
+  const showToast = useCallback(
+    (message: string) => {
+      setToast(message);
+
+      setTimeout(() => {
+        setToast(null);
+      }, 3000);
+    },
+    []
+  );
+
+  async function markJobActivityAsRead(
+    jobId: number
+  ) {
+    try {
+      await apiFetch(
+        `/jobs/${jobId}/mark-activity-read`,
+        {
+          method: "POST",
+        }
+      );
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
   useEffect(() => {
-    async function loadJob() {
+    async function loadData() {
       try {
-        const data =
+        const me: User =
+          await apiFetch("/users/me");
+
+        setUser(me);
+
+        const data: Job =
           await apiFetch(
             `/jobs/${resolvedParams.id}`
           );
 
         setJob(data);
+
+        if (me.id === data.client_id) {
+          await markJobActivityAsRead(data.id);
+        }
       } catch (error) {
         console.error(error);
+
+        showToast(
+          "Erreur lors du chargement du besoin."
+        );
       } finally {
         setLoading(false);
       }
     }
 
-    loadJob();
-  }, [resolvedParams.id]);
-
-  function showToast(message: string) {
-    setToast(message);
-
-    setTimeout(() => {
-      setToast(null);
-    }, 3000);
-  }
+    loadData();
+  }, [resolvedParams.id, showToast]);
 
   async function handleApply() {
-    if (!job) return;
+    if (!job) {
+      return;
+    }
+
+    if (!user?.can_work) {
+      showToast(
+        "Vous devez activer le mode travailleur pour postuler."
+      );
+
+      return;
+    }
 
     try {
       await apiFetch(
@@ -78,21 +164,20 @@ export default function JobDetailPage({
           body: JSON.stringify({
             message:
               "Disponible immédiatement.",
-            proposed_rate: 28,
+            proposed_rate:
+              job.budget_amount,
           }),
         }
       );
 
       setApplied(true);
 
-      showToast(
-        "Application sent!"
-      );
+      showToast("Candidature envoyée !");
     } catch (error) {
       console.error(error);
 
       showToast(
-        "Failed to apply"
+        "Impossible d’envoyer la candidature."
       );
     }
   }
@@ -103,7 +188,7 @@ export default function JobDetailPage({
         <AppNavbar />
 
         <div className="p-10">
-          Loading...
+          Chargement...
         </div>
       </>
     );
@@ -115,11 +200,14 @@ export default function JobDetailPage({
         <AppNavbar />
 
         <div className="p-10">
-          Job not found
+          Besoin introuvable.
         </div>
       </>
     );
   }
+
+  const isOpen =
+    job.status === "open";
 
   return (
     <>
@@ -131,74 +219,127 @@ export default function JobDetailPage({
         </div>
       )}
 
-      <div className="p-10">
-        <div className="max-w-3xl border rounded-lg p-8">
-          <h1 className="text-4xl font-bold mb-4">
-            {job.title}
-          </h1>
+      <main className="min-h-[calc(100vh-73px)] bg-gray-50 px-4 py-8 md:p-10">
+        <div className="max-w-3xl mx-auto border rounded-2xl p-6 md:p-8 bg-white shadow-sm">
+          <div className="mb-6">
+            <h1 className="text-3xl md:text-4xl font-bold mb-4">
+              {job.title}
+            </h1>
 
-          <p className="text-gray-600 mb-6">
-            {job.description}
-          </p>
-
-          <div className="space-y-3">
-            <p>
-              <strong>City:</strong>{" "}
-              {job.city}
-            </p>
-
-            <p>
-              <strong>Address:</strong>{" "}
-              {job.address_optional}
-            </p>
-
-            <p>
-              <strong>Budget:</strong>{" "}
-              ${job.budget_amount}
-            </p>
-
-            <p>
-              <strong>Duration:</strong>{" "}
-              {
-                job.duration_estimate_hours
-              }h
-            </p>
-
-            <p>
-              <strong>Urgency:</strong>{" "}
-              {job.urgency}
-            </p>
-
-            <p>
-              <strong>Status:</strong>{" "}
-              {job.status}
-            </p>
-
-            <p>
-              <strong>Needed At:</strong>{" "}
-              {job.needed_at}
+            <p className="text-gray-600">
+              {job.description ||
+                "Aucune description fournie."}
             </p>
           </div>
 
+          <div className="grid gap-4 md:grid-cols-2">
+            <InfoCard
+              label="Ville"
+              value={job.city}
+            />
+
+            <InfoCard
+              label="Région"
+              value={job.region || "Témiscaming"}
+            />
+
+            <InfoCard
+              label="Lieu approximatif"
+              value={
+                job.address_optional ||
+                "Non précisé"
+              }
+            />
+
+            <InfoCard
+              label="Budget proposé"
+              value={`${job.budget_amount} $/h`}
+            />
+
+            <InfoCard
+              label="Durée estimée"
+              value={
+                job.duration_estimate_hours
+                  ? `${job.duration_estimate_hours} h`
+                  : "Non précisée"
+              }
+            />
+
+            <InfoCard
+              label="Urgence"
+              value={getUrgencyLabel(job.urgency)}
+            />
+
+            <InfoCard
+              label="Statut"
+              value={getStatusLabel(job.status)}
+            />
+
+            <InfoCard
+              label="Date souhaitée"
+              value={
+                job.needed_at
+                  ? new Date(
+                      job.needed_at
+                    ).toLocaleString("fr-CA")
+                  : "Non précisée"
+              }
+            />
+          </div>
+
           <div className="mt-8">
-            {!applied &&
-              job.status === "open" && (
-                <button
-                  onClick={handleApply}
-                  className="bg-black text-white px-6 py-3 rounded"
-                >
-                  Apply
-                </button>
-              )}
+            <div className="mb-5">
+              <Link
+                href={`/clients/${job.client_id}`}
+                className="inline-flex items-center text-blue-600 hover:underline font-medium"
+              >
+                Voir le profil du client
+              </Link>
+            </div>
+
+            {!applied && isOpen && (
+              <button
+                onClick={handleApply}
+                className="bg-black text-white px-6 py-3 rounded-xl font-semibold"
+              >
+                Postuler à ce besoin
+              </button>
+            )}
 
             {applied && (
               <p className="text-green-600 font-bold">
-                Application sent
+                Candidature envoyée
+              </p>
+            )}
+
+            {!isOpen && (
+              <p className="text-gray-600 font-medium">
+                Ce besoin n’est plus ouvert.
               </p>
             )}
           </div>
         </div>
-      </div>
+      </main>
     </>
+  );
+}
+
+function InfoCard({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | number;
+}) {
+  return (
+    <div className="border rounded-xl p-4">
+      <p className="text-sm text-gray-500">
+        {label}
+      </p>
+
+      <p className="font-semibold">
+        {value}
+      </p>
+    </div>
   );
 }

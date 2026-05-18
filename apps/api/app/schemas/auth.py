@@ -5,7 +5,8 @@ class RegisterSchema(BaseModel):
     email: EmailStr
     password: str
     full_name: str
-    role: str
+    can_work: bool = False
+    can_hire: bool = True
 
 
 class LoginSchema(BaseModel):

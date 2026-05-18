@@ -11,31 +11,41 @@ from app.models.availability import Availability
 
 from app.schemas.availability import (
     AvailabilityCreateSchema,
-    AvailabilitySchema
+    AvailabilitySchema,
+)
+
+from app.constants.regions import (
+    TEMISCAMING_REGION,
+    TEMISCAMING_CITIES,
 )
 
 from app.core.security import get_current_user
 
 router = APIRouter(
     prefix="/availabilities",
-    tags=["Availabilities"]
+    tags=["Availabilities"],
 )
 
 
 @router.post(
     "",
-    response_model=AvailabilitySchema
+    response_model=AvailabilitySchema,
 )
 def create_availability(
     payload: AvailabilityCreateSchema,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
-
-    if current_user.role != "worker":
+    if not current_user.can_work:
         raise HTTPException(
             status_code=403,
-            detail="Only workers can create availability"
+            detail="Only users who can work can create availability",
+        )
+
+    if payload.city not in TEMISCAMING_CITIES:
+        raise HTTPException(
+            status_code=400,
+            detail="MainForte est disponible seulement au Témiscaming pour le moment.",
         )
 
     worker_profile = db.query(WorkerProfile).filter(
@@ -45,7 +55,7 @@ def create_availability(
     if not worker_profile:
         raise HTTPException(
             status_code=404,
-            detail="Worker profile not found"
+            detail="Worker profile not found",
         )
 
     availability = Availability(
@@ -54,11 +64,16 @@ def create_availability(
         start_datetime=payload.start_datetime,
         end_datetime=payload.end_datetime,
         city=payload.city,
+        region=TEMISCAMING_REGION,
         max_distance_km=payload.max_distance_km,
         note=payload.note,
     )
 
+    worker_profile.city = payload.city
+    worker_profile.region = TEMISCAMING_REGION
+
     db.add(availability)
+    db.add(worker_profile)
 
     db.commit()
     db.refresh(availability)
@@ -68,12 +83,17 @@ def create_availability(
 
 @router.get(
     "/me",
-    response_model=list[AvailabilitySchema]
+    response_model=list[AvailabilitySchema],
 )
 def get_my_availabilities(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
 ):
+    if not current_user.can_work:
+        raise HTTPException(
+            status_code=403,
+            detail="Only users who can work",
+        )
 
     worker_profile = db.query(WorkerProfile).filter(
         WorkerProfile.user_id == current_user.id
@@ -82,11 +102,12 @@ def get_my_availabilities(
     if not worker_profile:
         raise HTTPException(
             status_code=404,
-            detail="Worker profile not found"
+            detail="Worker profile not found",
         )
 
     availabilities = db.query(Availability).filter(
-        Availability.worker_id == worker_profile.id
+        Availability.worker_id == worker_profile.id,
+        Availability.region == TEMISCAMING_REGION,
     ).all()
 
     return availabilities
@@ -94,17 +115,17 @@ def get_my_availabilities(
 
 @router.get(
     "/available",
-    response_model=list[AvailabilitySchema]
+    response_model=list[AvailabilitySchema],
 )
 def get_available_workers(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-
     now = datetime.utcnow()
 
     availabilities = db.query(Availability).filter(
         Availability.status == "available",
-        Availability.end_datetime >= now
+        Availability.region == TEMISCAMING_REGION,
+        Availability.end_datetime >= now,
     ).all()
 
     return availabilities

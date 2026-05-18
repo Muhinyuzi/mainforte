@@ -38,6 +38,8 @@ class JobSchema(BaseModel):
 
     city: str
 
+    region: str
+
     address_optional: str | None = None
 
     needed_at: datetime
@@ -51,6 +53,8 @@ class JobSchema(BaseModel):
     budget_amount: int | None = None
 
     status: str
+
+    has_unread_activity: bool
 
     class Config:
         from_attributes = True

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+
 from sqlalchemy.orm import Session
 
 from app.db import get_db
@@ -28,8 +29,21 @@ def serialize_application(
     application: JobApplication,
     db: Session
 ):
-    worker_profile = db.query(WorkerProfile).filter(
-        WorkerProfile.id == application.worker_profile_id
+    job = db.query(JobPost).filter(
+        JobPost.id == application.job_id
+    ).first()
+
+    if not job:
+        raise HTTPException(
+            status_code=404,
+            detail="Job not found"
+        )
+
+    worker_profile = db.query(
+        WorkerProfile
+    ).filter(
+        WorkerProfile.id ==
+        application.worker_profile_id
     ).first()
 
     if not worker_profile:
@@ -50,17 +64,44 @@ def serialize_application(
 
     return {
         "id": application.id,
+
         "job_id": application.job_id,
-        "worker_profile_id": application.worker_profile_id,
-        "message": application.message,
-        "proposed_rate": application.proposed_rate,
-        "status": application.status,
+
+        "worker_profile_id":
+            application.worker_profile_id,
+
+        "message":
+            application.message,
+
+        "proposed_rate":
+            application.proposed_rate,
+
+        "status":
+            application.status,
+
+        "job": {
+            "id": job.id,
+            "title": job.title,
+            "city": job.city,
+            "region": job.region,
+            "status": job.status,
+            "client_id": job.client_id,
+        },
+
         "worker": {
             "id": worker_user.id,
-            "full_name": worker_user.full_name,
-            "city": worker_user.city,
-            "skills": worker_user.skills,
-            "hourly_rate": worker_user.hourly_rate,
+
+            "full_name":
+                worker_user.full_name,
+
+            "city":
+                worker_user.city,
+
+            "skills":
+                worker_user.skills,
+
+            "hourly_rate":
+                worker_user.hourly_rate,
         },
     }
 
@@ -73,12 +114,14 @@ def apply_to_job(
     job_id: int,
     payload: JobApplicationCreateSchema,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(
+        get_current_user
+    )
 ):
-    if current_user.role != "worker":
+    if not current_user.can_work:
         raise HTTPException(
             status_code=403,
-            detail="Only workers can apply"
+            detail="Only users who can work can apply"
         )
 
     job = db.query(JobPost).filter(
@@ -91,8 +134,11 @@ def apply_to_job(
             detail="Job not found"
         )
 
-    worker_profile = db.query(WorkerProfile).filter(
-        WorkerProfile.user_id == current_user.id
+    worker_profile = db.query(
+        WorkerProfile
+    ).filter(
+        WorkerProfile.user_id ==
+        current_user.id
     ).first()
 
     if not worker_profile:
@@ -101,9 +147,12 @@ def apply_to_job(
             detail="Worker profile not found"
         )
 
-    existing_application = db.query(JobApplication).filter(
+    existing_application = db.query(
+        JobApplication
+    ).filter(
         JobApplication.job_id == job.id,
-        JobApplication.worker_profile_id == worker_profile.id
+        JobApplication.worker_profile_id ==
+        worker_profile.id
     ).first()
 
     if existing_application:
@@ -114,13 +163,23 @@ def apply_to_job(
 
     application = JobApplication(
         job_id=job.id,
-        worker_profile_id=worker_profile.id,
+
+        worker_profile_id=
+            worker_profile.id,
+
         message=payload.message,
-        proposed_rate=payload.proposed_rate,
+
+        proposed_rate=
+            payload.proposed_rate,
     )
 
+    job.has_unread_activity = True
+
     db.add(application)
+    db.add(job)
+
     db.commit()
+
     db.refresh(application)
 
     return serialize_application(
@@ -137,7 +196,9 @@ def get_job_applications(
     job_id: int,
     db: Session = Depends(get_db)
 ):
-    applications = db.query(JobApplication).filter(
+    applications = db.query(
+        JobApplication
+    ).filter(
         JobApplication.job_id == job_id
     ).all()
 
@@ -157,10 +218,15 @@ def get_job_applications(
 def accept_application(
     application_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(
+        get_current_user
+    )
 ):
-    application = db.query(JobApplication).filter(
-        JobApplication.id == application_id
+    application = db.query(
+        JobApplication
+    ).filter(
+        JobApplication.id ==
+        application_id
     ).first()
 
     if not application:
@@ -185,7 +251,9 @@ def accept_application(
             detail="Not allowed"
         )
 
-    existing_accepted = db.query(JobApplication).filter(
+    existing_accepted = db.query(
+        JobApplication
+    ).filter(
         JobApplication.job_id == job.id,
         JobApplication.status == "accepted"
     ).first()
@@ -196,8 +264,11 @@ def accept_application(
             detail="Job already has an accepted application"
         )
 
-    worker_profile = db.query(WorkerProfile).filter(
-        WorkerProfile.id == application.worker_profile_id
+    worker_profile = db.query(
+        WorkerProfile
+    ).filter(
+        WorkerProfile.id ==
+        application.worker_profile_id
     ).first()
 
     if not worker_profile:
@@ -207,42 +278,68 @@ def accept_application(
         )
 
     application.status = "accepted"
-    job.status = "matched"
 
-    existing_conversation = db.query(Conversation).filter(
+    job.status = "matched"
+    job.has_unread_activity = False
+
+    existing_conversation = db.query(
+        Conversation
+    ).filter(
         Conversation.job_id == job.id,
-        Conversation.client_id == job.client_id,
-        Conversation.worker_id == worker_profile.user_id
+
+        Conversation.client_id ==
+        job.client_id,
+
+        Conversation.worker_id ==
+        worker_profile.user_id
     ).first()
 
     if not existing_conversation:
+
         conversation = Conversation(
             job_id=job.id,
+
             client_id=job.client_id,
-            worker_id=worker_profile.user_id,
+
+            worker_id=
+                worker_profile.user_id,
         )
 
         db.add(conversation)
 
     match = db.query(Match).filter(
         Match.job_id == job.id,
-        Match.worker_profile_id == application.worker_profile_id
+
+        Match.worker_profile_id ==
+        application.worker_profile_id
     ).first()
 
     if match:
         match.status = "accepted"
 
-    availability = db.query(Availability).filter(
-        Availability.worker_id == application.worker_profile_id,
-        Availability.status == "available",
-        Availability.start_datetime <= job.needed_at,
-        Availability.end_datetime >= job.needed_at,
+    availability = db.query(
+        Availability
+    ).filter(
+        Availability.worker_id ==
+        application.worker_profile_id,
+
+        Availability.status ==
+        "available",
+
+        Availability.start_datetime <=
+        job.needed_at,
+
+        Availability.end_datetime >=
+        job.needed_at,
     ).first()
 
     if availability:
         availability.status = "booked"
 
+    db.add(job)
+
     db.commit()
+
     db.refresh(application)
 
     return serialize_application(
@@ -258,10 +355,15 @@ def accept_application(
 def reject_application(
     application_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(
+        get_current_user
+    )
 ):
-    application = db.query(JobApplication).filter(
-        JobApplication.id == application_id
+    application = db.query(
+        JobApplication
+    ).filter(
+        JobApplication.id ==
+        application_id
     ).first()
 
     if not application:
@@ -288,15 +390,22 @@ def reject_application(
 
     application.status = "rejected"
 
+    job.has_unread_activity = False
+
     match = db.query(Match).filter(
         Match.job_id == job.id,
-        Match.worker_profile_id == application.worker_profile_id
+
+        Match.worker_profile_id ==
+        application.worker_profile_id
     ).first()
 
     if match:
         match.status = "rejected"
 
+    db.add(job)
+
     db.commit()
+
     db.refresh(application)
 
     return serialize_application(
@@ -308,16 +417,21 @@ def reject_application(
 @router.get("/me")
 def get_my_applications(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(
+        get_current_user
+    )
 ):
-    if current_user.role != "worker":
+    if not current_user.can_work:
         raise HTTPException(
             status_code=403,
-            detail="Only workers"
+            detail="Only users who can work"
         )
 
-    worker_profile = db.query(WorkerProfile).filter(
-        WorkerProfile.user_id == current_user.id
+    worker_profile = db.query(
+        WorkerProfile
+    ).filter(
+        WorkerProfile.user_id ==
+        current_user.id
     ).first()
 
     if not worker_profile:
@@ -326,8 +440,11 @@ def get_my_applications(
             detail="Worker profile not found"
         )
 
-    applications = db.query(JobApplication).filter(
-        JobApplication.worker_profile_id == worker_profile.id
+    applications = db.query(
+        JobApplication
+    ).filter(
+        JobApplication.worker_profile_id ==
+        worker_profile.id
     ).all()
 
     return [

@@ -42,6 +42,10 @@ class User(Base):
         nullable=False
     )
 
+    can_work = Column(Boolean, default=False)
+
+    can_hire = Column(Boolean, default=True)
+
     is_active = Column(
         Boolean,
         default=True
@@ -60,6 +64,7 @@ class User(Base):
     profile_picture_url = Column(
         String
     )
+
 
     created_at = Column(
         DateTime(timezone=True),

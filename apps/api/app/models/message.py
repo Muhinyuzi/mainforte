@@ -3,7 +3,8 @@ from sqlalchemy import (
     Integer,
     ForeignKey,
     Text,
-    DateTime
+    DateTime,
+    Boolean
 )
 
 from sqlalchemy.sql import func
@@ -36,6 +37,8 @@ class Message(Base):
         Text,
         nullable=False
     )
+
+    is_read = Column(Boolean, default=False)
 
     created_at = Column(
         DateTime(timezone=True),

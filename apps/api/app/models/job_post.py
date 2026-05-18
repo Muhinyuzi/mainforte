@@ -3,10 +3,12 @@ from sqlalchemy import (
     Integer,
     String,
     DateTime,
-    ForeignKey
+    ForeignKey,
+    Boolean
 )
 
 from sqlalchemy.sql import func
+from sqlalchemy.orm import relationship
 
 from app.db import Base
 
@@ -35,7 +37,9 @@ class JobPost(Base):
 
     description = Column(String)
 
-    city = Column(String)
+    city = Column(String, nullable=False)
+
+    region = Column(String, nullable=False)
 
     address_optional = Column(String)
 
@@ -52,6 +56,12 @@ class JobPost(Base):
     status = Column(
         String,
         default="open"
+    )
+
+    has_unread_activity = Column(
+        Boolean,
+       default=False,
+       nullable=False,
     )
 
     created_at = Column(
