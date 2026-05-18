@@ -29,6 +29,10 @@ from app.routers.notifications import (
     router as notifications_router
 )
 
+from app.routers.categories import (
+    router as categories_router     
+    )
+
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
@@ -59,6 +63,7 @@ app.include_router(worker_jobs_router)
 app.include_router(conversations_router)
 app.include_router(reviews_router)
 app.include_router(notifications_router)
+app.include_router(categories_router)
 
 @app.get("/")
 def root():

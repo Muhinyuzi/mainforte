@@ -5,10 +5,15 @@ from math import radians, sin, cos, sqrt, atan2
 
 CITY_COORDS = {
     "Ville-Marie": (47.333, -79.433),
-    "Rouyn-Noranda": (48.236, -79.023),
-    "Témiscaming": (46.721, -79.097),
-    "Notre-Dame-du-Nord": (47.600, -79.483),
     "Duhamel-Ouest": (47.333, -79.500),
+    "Notre-Dame-du-Nord": (47.600, -79.483),
+    "Lorrainville": (47.373, -79.433),
+    "Saint-Bruno-de-Guigues": (47.467, -79.433),
+    "Béarn": (47.550, -79.283),
+    "Témiscaming": (46.721, -79.097),
+
+    # Ville proche utile pour les exemples / déplacements
+    "Rouyn-Noranda": (48.236, -79.023),
 }
 
 

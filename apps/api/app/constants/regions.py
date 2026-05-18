@@ -1,4 +1,4 @@
-TEMISCAMING_REGION = "Temiscaming"
+TEMISCAMING_REGION = "Témiscaming"
 
 TEMISCAMING_CITIES = [
     "Ville-Marie",

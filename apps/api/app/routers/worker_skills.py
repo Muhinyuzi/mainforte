@@ -116,3 +116,47 @@ def get_my_skills(
     ).all()
 
     return skills
+
+@router.delete(
+    "/{skill_id}"
+)
+def delete_worker_skill(
+    skill_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    if not current_user.can_work:
+        raise HTTPException(
+            status_code=403,
+            detail="Only users who can work"
+        )
+
+    worker_profile = db.query(WorkerProfile).filter(
+        WorkerProfile.user_id == current_user.id,
+        WorkerProfile.region == TEMISCAMING_REGION,
+    ).first()
+
+    if not worker_profile:
+        raise HTTPException(
+            status_code=404,
+            detail="Worker profile not found"
+        )
+
+    skill = db.query(WorkerSkill).filter(
+        WorkerSkill.id == skill_id,
+        WorkerSkill.worker_id == worker_profile.id,
+    ).first()
+
+    if not skill:
+        raise HTTPException(
+            status_code=404,
+            detail="Skill not found"
+        )
+
+    db.delete(skill)
+    db.commit()
+
+    return {
+        "ok": True,
+        "deleted_skill_id": skill_id,
+    }
