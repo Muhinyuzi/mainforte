@@ -23,6 +23,17 @@ type User = {
   can_hire: boolean;
 };
 
+type Category = {
+  id: number;
+  name: string;
+};
+
+type WorkerSkill = {
+  id: number;
+  category_id: number;
+  experience_level: string;
+};
+
 export default function ProfileSettingsPage() {
 
   const [user, setUser] =
@@ -36,6 +47,19 @@ export default function ProfileSettingsPage() {
 
   const [skills, setSkills] =
     useState("");
+
+  const [categories, setCategories] =
+    useState<Category[]>([]);
+
+  const [
+    selectedCategories,
+    setSelectedCategories
+  ] = useState<number[]>([]);
+
+  const [
+    existingSkills,
+    setExistingSkills
+  ] = useState<WorkerSkill[]>([]);
 
   const [hourlyRate,
     setHourlyRate] =
@@ -104,6 +128,43 @@ export default function ProfileSettingsPage() {
           data.can_hire ?? true
         );
 
+        const categoriesData =
+          await apiFetch(
+            "/categories"
+          );
+
+        setCategories(
+          categoriesData
+        );
+
+        if (data.can_work) {
+
+          try {
+
+            const skillsData: WorkerSkill[] =
+              await apiFetch(
+                "/workers/skills/me"
+              );
+
+            setExistingSkills(
+              skillsData
+            );
+
+            setSelectedCategories(
+              skillsData.map(
+                (skill) =>
+                  skill.category_id
+              )
+            );
+
+          } catch {
+
+            setExistingSkills([]);
+            setSelectedCategories([]);
+          }
+
+        }
+
       } catch (error) {
 
         console.error(error);
@@ -127,6 +188,101 @@ export default function ProfileSettingsPage() {
     setTimeout(() => {
       setToast(null);
     }, 3000);
+  }
+
+  function toggleCategory(
+    categoryId: number,
+    checked: boolean
+  ) {
+
+    if (checked) {
+
+      setSelectedCategories(
+        (prev) =>
+          prev.includes(categoryId)
+            ? prev
+            : [
+                ...prev,
+                categoryId,
+              ]
+      );
+
+      return;
+    }
+
+    setSelectedCategories(
+      (prev) =>
+        prev.filter(
+          (id) =>
+            id !== categoryId
+        )
+    );
+  }
+
+  async function saveWorkerSkills() {
+
+    const existingCategoryIds =
+      existingSkills.map(
+        (skill) =>
+          skill.category_id
+      );
+
+    const categoriesToAdd =
+      selectedCategories.filter(
+        (categoryId) =>
+          !existingCategoryIds.includes(
+            categoryId
+          )
+      );
+
+    const skillsToDelete =
+      existingSkills.filter(
+        (skill) =>
+          !selectedCategories.includes(
+            skill.category_id
+          )
+      );
+
+    for (const categoryId of categoriesToAdd) {
+
+      await apiFetch(
+        "/workers/skills",
+        {
+          method: "POST",
+
+          body: JSON.stringify({
+            category_id: categoryId,
+            experience_level: "intermediate",
+          }),
+        }
+      );
+    }
+
+    for (const skill of skillsToDelete) {
+
+      await apiFetch(
+        `/workers/skills/${skill.id}`,
+        {
+          method: "DELETE",
+        }
+      );
+    }
+
+    const updatedSkills: WorkerSkill[] =
+      await apiFetch(
+        "/workers/skills/me"
+      );
+
+    setExistingSkills(
+      updatedSkills
+    );
+
+    setSelectedCategories(
+      updatedSkills.map(
+        (skill) =>
+          skill.category_id
+      )
+    );
   }
 
   async function handleSave() {
@@ -170,6 +326,13 @@ export default function ProfileSettingsPage() {
             }),
           }
         );
+
+      if (canWork) {
+        await saveWorkerSkills();
+      } else {
+        setExistingSkills([]);
+        setSelectedCategories([]);
+      }
 
       setUser(data);
 
@@ -340,20 +503,60 @@ export default function ProfileSettingsPage() {
             <>
               <div>
                 <label className="block mb-2 font-medium">
-                  Compétences
+                  Présentation / expérience
                 </label>
 
-                <input
-                  type="text"
+                <textarea
                   value={skills}
                   onChange={(e) =>
                     setSkills(
                       e.target.value
                     )
                   }
-                  placeholder="Déménagement, ménage, jardinage..."
+                  rows={3}
+                  placeholder="Ex : Disponible les soirs et fins de semaine. Expérience en déménagement, transport et petits travaux."
                   className="w-full border rounded-xl px-4 py-3"
                 />
+              </div>
+
+              <div>
+                <label className="block mb-3 font-medium">
+                  Services offerts
+                </label>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+
+                  {categories.map(
+                    (category) => (
+
+                      <label
+                        key={category.id}
+                        className="flex items-center gap-3 border rounded-xl px-4 py-3 cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={
+                            selectedCategories.includes(
+                              category.id
+                            )
+                          }
+                          onChange={(e) =>
+                            toggleCategory(
+                              category.id,
+                              e.target.checked
+                            )
+                          }
+                        />
+
+                        <span>
+                          {category.name}
+                        </span>
+                      </label>
+
+                    )
+                  )}
+
+                </div>
               </div>
 
               <div>
