@@ -20,6 +20,9 @@ import {
   apiFetch
 } from "@/lib/api";
 
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL;
+
 export default function LoginPage() {
 
   const router =
@@ -70,7 +73,7 @@ export default function LoginPage() {
 
       const response =
         await fetch(
-          "http://localhost:8000/auth/login",
+          `${API_BASE_URL}/auth/login`,
           {
             method: "POST",
 

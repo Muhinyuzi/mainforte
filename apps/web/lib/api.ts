@@ -1,4 +1,5 @@
-const API_BASE_URL = "http://localhost:8000";
+const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL;
 
 export async function apiFetch(
   endpoint: string,
@@ -18,13 +19,17 @@ export async function apiFetch(
     headers.Authorization = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  const response = await fetch(
+    `${API_BASE_URL}${endpoint}`,
+    {
+      ...options,
+      headers,
+    }
+  );
 
   if (!response.ok) {
     const errorText = await response.text();
+
     throw new Error(
       `${endpoint} failed: ${response.status} ${errorText}`
     );
