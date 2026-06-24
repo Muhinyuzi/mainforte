@@ -16,20 +16,21 @@ type User = {
   can_hire: boolean;
 };
 
-const categories = [
-  { id: 1, label: "Déménagement" },
-  { id: 2, label: "Ménage" },
-  { id: 3, label: "Jardinage" },
-  { id: 4, label: "Transport" },
-  { id: 5, label: "Gardiennage" },
-  { id: 6, label: "Aide ponctuelle" },
-];
+type Category = {
+  id: number;
+  name: string;
+};
+
+
 
 export default function PostJobPage() {
   const router = useRouter();
 
+  const [categories, setCategories] =
+    useState<Category[]>([]);
+
   const [categoryId, setCategoryId] =
-    useState(1);
+    useState<number | null>(null);
 
   const [title, setTitle] =
     useState("");
@@ -67,6 +68,14 @@ export default function PostJobPage() {
         const me: User =
           await apiFetch("/users/me");
 
+        const categoriesData: Category[] =
+          await apiFetch("/categories");
+
+        setCategories(categoriesData);
+        if (categoriesData.length > 0) {
+          setCategoryId(categoriesData[0].id);
+        }
+
         if (!me.can_hire) {
           router.push(
             "/worker/dashboard"
@@ -86,6 +95,11 @@ export default function PostJobPage() {
     e: React.FormEvent
   ) {
     e.preventDefault();
+
+    if (!categoryId) {
+      alert("Sélectionnez une catégorie.");
+      return;
+    }
 
     try {
       setLoading(true);
@@ -174,7 +188,7 @@ export default function PostJobPage() {
               </label>
 
               <select
-                value={categoryId}
+                 value={categoryId || ""}
 
                 onChange={(e) =>
                   setCategoryId(
@@ -185,7 +199,11 @@ export default function PostJobPage() {
                 }
 
                 className="w-full border rounded-xl px-4 py-3"
+                required
               >
+                <option value="" disabled>
+                  Sélectionnez une catégorie
+                </option>
 
                 {categories.map(
                   (category) => (
@@ -194,7 +212,7 @@ export default function PostJobPage() {
                       key={category.id}
                       value={category.id}
                     >
-                      {category.label}
+                      {category.name}
                     </option>
 
                   )
